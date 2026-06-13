@@ -1,4 +1,4 @@
-# infinity_pollingimport requests
+import requests
 import time
 import schedule
 import datetime
@@ -55,17 +55,34 @@ def get_all_mentions():
     if not mentions:
         mentions.append("@everyone @all")
     
-    return " ".join(mentions[:25])  # Limite seguro
+    return " ".join(mentions[:25])
 
 # ====================== COMANDOS ======================
 
 @bot.message_handler(commands=['start', 'help'])
 def cmd_start(message: Message):
-    text = "👋 **Monitor de Instagram Ativo**\n\nComandos:\n/insta - Adicionar perfis\n/list - Ver lista\n/remove - Remover"
+    # Só responde se for no grupo
+    if message.chat.type == "private":
+        bot.reply_to(message, "❌ Este comando só funciona dentro do grupo.")
+        return
+    
+    text = (
+        "👋 **Monitor de Instagram Ativo**\n\n"
+        "**Comandos disponíveis:**\n\n"
+        "📌 `/insta` → Adicionar um ou mais perfis do Instagram para monitorar\n"
+        "   (pode enviar links ou @username)\n\n"
+        "📋 `/list` → Mostrar todos os perfis que estão sendo monitorados\n\n"
+        "🗑️ `/remove` → Remover um perfil da lista de monitoramento\n\n"
+        "ℹ️ `/help` ou `/start` → Mostrar esta mensagem de ajuda\n\n"
+        "⚡ O bot verifica os perfis **a cada 5 minutos** e avisa todo o grupo quando algum cair."
+    )
     bot.reply_to(message, text, parse_mode="Markdown")
 
 @bot.message_handler(commands=['insta'])
 def cmd_insta(message: Message):
+    if message.chat.type == "private":
+        bot.reply_to(message, "❌ Este comando só funciona dentro do grupo.")
+        return
     bot.reply_to(message, "🔗 Envie o link ou @ do Instagram (pode mandar vários):")
     bot.register_next_step_handler(message, process_links)
 
@@ -93,6 +110,9 @@ def process_links(message: Message):
 
 @bot.message_handler(commands=['list'])
 def cmd_list(message: Message):
+    if message.chat.type == "private":
+        bot.reply_to(message, "❌ Este comando só funciona dentro do grupo.")
+        return
     if not monitored_profiles:
         bot.reply_to(message, "Nenhum perfil monitorado.")
         return
@@ -101,6 +121,9 @@ def cmd_list(message: Message):
 
 @bot.message_handler(commands=['remove'])
 def cmd_remove(message: Message):
+    if message.chat.type == "private":
+        bot.reply_to(message, "❌ Este comando só funciona dentro do grupo.")
+        return
     bot.reply_to(message, "🗑️ Envie o @username para remover:")
     bot.register_next_step_handler(message, process_remove)
 
@@ -196,7 +219,17 @@ def run_monitor():
         time.sleep(60)
 
 
+# ====================== INICIALIZAÇÃO ======================
 if __name__ == "__main__":
     print("🚀 Bot iniciado com sucesso! Monitorando a cada 5 minutos.")
+    
+    try:
+        print("Removendo webhook antigo...")
+        bot.remove_webhook()
+        time.sleep(2)
+        print("✅ Webhook removido com sucesso.")
+    except Exception as e:
+        print(f"Erro ao remover webhook: {e}")
+    
     threading.Thread(target=run_monitor, daemon=True).start()
     bot.infinity_polling()
