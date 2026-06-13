@@ -23,7 +23,7 @@ HEADERS = {
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
-# Carregar perfis salvos
+# Carregar perfis
 def load_profiles():
     if os.path.exists(PROFILES_FILE):
         try:
@@ -39,7 +39,7 @@ def save_profiles(profiles):
 
 monitored_profiles = load_profiles()
 
-# ====================== FUNÇÃO PARA MENCIONAR MEMBROS ======================
+# ====================== MENCIONAR MEMBROS ======================
 def get_all_mentions():
     mentions = []
     try:
@@ -51,30 +51,25 @@ def get_all_mentions():
                 mentions.append(f"[{admin.user.first_name}](tg://user?id={admin.user.id})")
     except:
         pass
-    
     if not mentions:
         mentions.append("@everyone @all")
-    
     return " ".join(mentions[:25])
 
 # ====================== COMANDOS ======================
 
 @bot.message_handler(commands=['start', 'help'])
 def cmd_start(message: Message):
-    # Só responde se for no grupo
     if message.chat.type == "private":
         bot.reply_to(message, "❌ Este comando só funciona dentro do grupo.")
         return
-    
     text = (
         "👋 **Monitor de Instagram Ativo**\n\n"
         "**Comandos disponíveis:**\n\n"
-        "📌 `/insta` → Adicionar um ou mais perfis do Instagram para monitorar\n"
-        "   (pode enviar links ou @username)\n\n"
-        "📋 `/list` → Mostrar todos os perfis que estão sendo monitorados\n\n"
-        "🗑️ `/remove` → Remover um perfil da lista de monitoramento\n\n"
-        "ℹ️ `/help` ou `/start` → Mostrar esta mensagem de ajuda\n\n"
-        "⚡ O bot verifica os perfis **a cada 5 minutos** e avisa todo o grupo quando algum cair."
+        "📌 `/insta` → Adicionar perfis do Instagram\n"
+        "📋 `/list` → Ver lista de perfis monitorados\n"
+        "🗑️ `/remove` → Remover um perfil\n"
+        "ℹ️ `/help` ou `/start` → Mostrar esta ajuda\n\n"
+        "✅ Verifica a cada 5 minutos e avisa o grupo quando cair."
     )
     bot.reply_to(message, text, parse_mode="Markdown")
 
@@ -83,7 +78,7 @@ def cmd_insta(message: Message):
     if message.chat.type == "private":
         bot.reply_to(message, "❌ Este comando só funciona dentro do grupo.")
         return
-    bot.reply_to(message, "🔗 Envie o link ou @ do Instagram (pode mandar vários):")
+    bot.reply_to(message, "🔗 Envie o link ou @ do Instagram (pode vários):")
     bot.register_next_step_handler(message, process_links)
 
 def process_links(message: Message):
@@ -137,7 +132,7 @@ def process_remove(message: Message):
     else:
         bot.reply_to(message, "❌ Não encontrado.")
 
-# ====================== MONITOR ======================
+# ====================== MONITOR INSTAGRAM ======================
 
 def check_profile(username):
     try:
@@ -148,25 +143,17 @@ def check_profile(username):
             return False, f"HTTP {r.status_code}"
         
         content = r.text.lower()
-        
         error_phrases = [
-            "sorry, this page isn't available",
-            "page not found",
-            "this content isn't available",
-            "esta página não está disponível",
-            "o link em que você clicou pode não estar funcionando",
-            "página pode ter sido removida",
-            "esta publicação não está disponível"
+            "sorry, this page isn't available", "page not found", "this content isn't available",
+            "esta página não está disponível", "o link em que você clicou pode não estar funcionando",
+            "página pode ter sido removida", "esta publicação não está disponível"
         ]
         
         if any(phrase in content for phrase in error_phrases):
             return False, "Perfil caiu"
-        
         return True, "OK"
-        
     except:
         return False, "Erro"
-
 
 def monitor_job():
     global monitored_profiles
@@ -182,33 +169,24 @@ def monitor_job():
             pass
 
     for username in monitored_profiles[:]:
-        is_up, reason = check_profile(username)
+        is_up, _ = check_profile(username)
         was_down = state.get(username, False)
-
         now = datetime.datetime.now().strftime('%d/%m %H:%M')
 
         if not is_up and not was_down:
             mentions = get_all_mentions()
-            
-            msg = f"❌ {mentions}\n\n" \
-                  f"⚠️ O perfil **@{username}** caiu\n\n" \
-                  f"⏰ {now}\n\n" \
-                  f"Faça um novo perfil porta link ou vc vai perder dinheiro 💸\n\n" \
-                  f"🔗 https://www.instagram.com/{username}/"
+            msg = f"❌ {mentions}\n\n⚠️ O perfil **@{username}** caiu\n\n⏰ {now}\n\nFaça um novo perfil porta link ou vc vai perder dinheiro 💸\n\n🔗 https://www.instagram.com/{username}/"
             
             try:
                 bot.send_message(CHAT_ID, msg, parse_mode="Markdown", disable_web_page_preview=True)
             except:
-                bot.send_message(CHAT_ID, f"❌ @everyone @all\n\n⚠️ O perfil **@{username}** caiu\n\nFaça um novo perfil ou vai perder dinheiro 💸", parse_mode="Markdown")
-            
+                pass
             state[username] = True
-
         elif is_up and was_down:
             state[username] = False
 
     with open(STATE_FILE, "w") as f:
         json.dump(state, f, indent=2)
-
 
 def run_monitor():
     schedule.every(CHECK_INTERVAL_MINUTES).minutes.do(monitor_job)
@@ -218,18 +196,16 @@ def run_monitor():
         schedule.run_pending()
         time.sleep(60)
 
-
 # ====================== INICIALIZAÇÃO ======================
 if __name__ == "__main__":
     print("🚀 Bot iniciado com sucesso! Monitorando a cada 5 minutos.")
     
     try:
-        print("Removendo webhook antigo...")
         bot.remove_webhook()
-        time.sleep(2)
-        print("✅ Webhook removido com sucesso.")
-    except Exception as e:
-        print(f"Erro ao remover webhook: {e}")
+        time.sleep(3)
+        print("✅ Webhook removido")
+    except:
+        pass
     
     threading.Thread(target=run_monitor, daemon=True).start()
     bot.infinity_polling()
