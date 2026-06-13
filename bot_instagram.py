@@ -9,7 +9,7 @@ import telebot
 from telebot.types import Message
 
 # ================== CONFIGURAÇÕES ==================
-TELEGRAM_TOKEN = "8749670946:AAH2nEVwTdeRefsdQOjXj426IqW_AeEcmfo"
+TELEGRAM_TOKEN = "8749670946:AAHmN1HgdYC2FwyNJ-SDWLKzHGyiYgBDdSU"
 CHAT_ID = -5514378743
 
 CHECK_INTERVAL_MINUTES = 5
